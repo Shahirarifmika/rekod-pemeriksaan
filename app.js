@@ -171,11 +171,7 @@ async function openPrem(p) {
   editingPrem = p;
   P_F.forEach(f => setField(f, p?.[f]));
   for (const k of ["ssm", "pbt"]) { if (photos[k]?.url) URL.revokeObjectURL(photos[k].url); photos[k] = null; }
-  for (const k of ["ssm", "pbt"]) {
-    const gid = p?.photos?.[k];
-    if (gid) { const g = await dbGet("gambar", gid); if (g) photos[k] = { id: gid, blob: g.blob, url: URL.createObjectURL(g.blob), saved: true }; }
-    showThumb(k);
-  }
+  showThumb("ssm"); showThumb("pbt");
   document.querySelectorAll("#v-prem input[type=file]").forEach(i => i.value = "");
   $("pr-title").textContent = p ? `Premis ${premises.indexOf(p) + 1}` : `Premis ${premises.length + 1}`;
   $("pr-read").className = "status"; $("pr-read").textContent = "";
@@ -238,8 +234,8 @@ async function pick(kind, file) {
   let im;
   try { im = await loadImage(file); } catch (e) { $("pr-read").className = "status err"; $("pr-read").textContent = "Gambar tidak dapat dibuka."; return; }
   finally { reading--; }
-  const keep = drawTo(im, 1400, false);
-  const blob = await new Promise(r => keep.toBlob(r, "image/jpeg", 0.72));
+  const keep = drawTo(im, 600, false);
+  const blob = await new Promise(r => keep.toBlob(r, "image/jpeg", 0.6));
   if (photos[kind]?.url) URL.revokeObjectURL(photos[kind].url);
   photos[kind] = { blob, url: URL.createObjectURL(blob), saved: false, id: photos[kind]?.id };
   showThumb(kind);
@@ -313,12 +309,8 @@ async function savePrem(btn, next) {
   if (!data.p_nama && !data.p_pemilik) { st.className = "status err"; st.textContent = "Isi nama perniagaan atau nama pemilik."; return; }
   busy(btn, true, "Menyimpan…");
   try {
-    const ph = { ...(editingPrem?.photos || {}) };
-    for (const k of ["ssm", "pbt"]) {
-      const p = photos[k]; if (!p || p.saved) continue;
-      const id = p.id || uid(); await dbPut("gambar", { id, blob: p.blob }); p.id = id; p.saved = true; ph[k] = id;
-    }
-    const rec = { ...(editingPrem || { id: uid(), inspId: current.id, createdAt: Date.now() }), ...data, photos: ph, updatedAt: Date.now() };
+    // Gambar tidak disimpan: hanya digunakan untuk membaca teks, kemudian dibuang.
+    const rec = { ...(editingPrem || { id: uid(), inspId: current.id, createdAt: Date.now() }), ...data, photos: {}, updatedAt: Date.now() };
     await dbPut("premis", rec);
     await loadPremises();
     busy(btn, false); toast("Premis disimpan");
@@ -414,6 +406,8 @@ if (!standalone && /iPhone|iPad/.test(navigator.userAgent)) { $("install").hidde
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
 
+// Buang gambar lama yang pernah disimpan oleh versi terdahulu
+tx("gambar", "readwrite", s => s.clear()).catch(() => {});
 loadHome().then(() => go("home")).catch(e => { $("h-empty").textContent = "Storan telefon tidak dapat dibuka: " + e.message; });
 // Muat pembaca teks awal-awal supaya snap pertama lebih cepat
 setTimeout(() => { getWorker().catch(() => {}); }, 1500);
