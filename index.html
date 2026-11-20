@@ -111,6 +111,8 @@ textarea{min-height:64px;resize:vertical}
 .pemb .r .btn{min-height:40px;padding:6px 12px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;font-size:.9rem;z-index:9;max-width:calc(100% - 32px)}
 .note{font-size:.84rem;color:var(--muted);margin:0}
+.credit{border-top:1px solid var(--line);margin-top:28px;padding-top:14px;display:flex;flex-direction:column;gap:2px;text-align:center;font-size:.86rem;color:var(--muted)}
+.credit b{color:var(--ink)}
 .install{background:var(--accent-soft);border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .install p{margin:0;flex:1;min-width:180px;font-size:.9rem}
 .spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-2px}
@@ -138,6 +140,10 @@ textarea{min-height:64px;resize:vertical}
     <div class="list" id="h-list"><div class="empty" id="h-empty">Belum ada pemeriksaan. Tekan <b>Mula pemeriksaan baru</b>, isi tarikh, pegawai dan kawasan, kemudian snap sijil setiap premis.</div></div>
     <p class="note">Rekod disimpan dalam telefon ini sahaja. Gambar tidak disimpan, ia dibuang selepas teks dibaca. Muat turun Excel selepas setiap pemeriksaan sebagai salinan.</p>
   </section>
+  <footer class="credit">
+    <div class="credit-name">Dicipta &amp; dibangunkan oleh <b>Shahir Arif</b></div>
+    <div class="meta">Versi <b id="app-version"></b> · <span id="app-date"></span></div>
+  </footer>
 </div>
 
 <div id="v-head" hidden>
@@ -218,7 +224,8 @@ textarea{min-height:64px;resize:vertical}
       <legend>Maklumat premis</legend>
       <div class="f full"><label for="p_nama">Nama perniagaan</label><input id="p_nama"></div>
       <div class="f full"><label for="p_pemilik">Nama pemilik <span class="opt">(pilihan)</span></label><input id="p_pemilik"></div>
-      <div class="f"><label for="p_ssm">No. pendaftaran SSM</label><input id="p_ssm" class="mono" placeholder="cth. JM0968547-V" autocapitalize="characters"></div>
+      <div class="f"><label for="p_ssm_baru">No. SSM baru (12 digit)</label><input id="p_ssm_baru" class="mono" inputmode="numeric" placeholder="cth. 202103288269"></div>
+      <div class="f"><label for="p_ssm">No. SSM lama</label><input id="p_ssm" class="mono" placeholder="cth. 003323400-H" autocapitalize="characters"></div>
       <div class="f"><label for="p_kp">No. K/P pemilik <span class="opt">(pilihan)</span></label><input id="p_kp" class="mono" inputmode="numeric"></div>
       <div class="f"><label for="p_tamat">SSM sah sehingga</label><input id="p_tamat" type="date"></div>
       <div class="f"><label for="p_tel">No. telefon <span class="opt">(pilihan)</span></label><input id="p_tel" type="tel" inputmode="tel" autocomplete="off"></div>
