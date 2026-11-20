@@ -16,7 +16,7 @@
   // Betulkan huruf yang tersalah baca dalam nombor
   const digits = s => s.replace(/[Oo]/g, "0").replace(/[Il|]/g, "1").replace(/[S]/g, "5").replace(/[B]/g, "8");
   const clean = s => (s || "").replace(/[“”"©®~_|{}\[\]«»]/g, " ").replace(/\s+/g, " ").replace(/^[^A-Za-z0-9(]+/, "").replace(/[^A-Za-z0-9).&]+$/, "").trim();
-
+ 
   function monthNum(w) {
     w = (w || "").toUpperCase().replace(/[^A-Z]/g, "");
     if (BULAN[w]) return BULAN[w];
@@ -32,7 +32,7 @@
     if (m) { const mo = monthNum(m[2]); if (mo) return iso(m[1], mo, m[3]); }
     return null;
   }
-
+ 
   // No. SSM format lama: JM0968547-V, 003654347-H, CT0168708-U, IP0623505-T
   function oldSsm(s) {
     const re = /\b([A-Z]{0,3})\s?([0-9OoIl]{5,10})\s?[-–]\s?([A-Z])\b/g;
@@ -42,10 +42,23 @@
       if (!/\d/.test(m[2])) continue;
       // OCR kadang-kadang tambah "O" di sebelah "0": JM0O785169 -> JM0785169
       if (pre.length === 2 && body.length === 8) body = body.replace(/00/, "0");
+      if (pre.length === 2 && pre[1] === "M" && /[9T1I]/.test(pre[0])) pre = "J" + pre[1];
       best = `${pre}${body}-${m[3]}`;
       break;
     }
     return best;
+  }
+  // Nombor lama dalam kurungan selepas nombor baru, cth "(9M0408667-yy)" -> "JM0408667-W"
+  function bracketSsm(s) {
+    const m = s.match(/\(\s*([A-Z0-9]{1,3}?)\s?([0-9OIl]{6,8})\s*[-–]\s*([A-Z]{1,2})\s*\)?/i);
+    if (!m) return null;
+    let pre = m[1].toUpperCase(), body = digits(m[2]), suf = m[3].toUpperCase();
+    if (pre.length === 2 && pre[1] === "M" && /[9T1I]/.test(pre[0])) pre = "J" + pre.slice(1);
+    if (pre.length === 2 && body.length === 8) body = body.replace(/00/, "0");
+    if (/^(VV|YY|VY|YV)$/.test(suf)) suf = "W";
+    if (suf.length > 1) suf = suf[0];
+    if (/\d/.test(pre) && pre.length < 2) return null;
+    return `${pre}${body}-${suf}`;
   }
   function newSsm(s) {
     const m = s.replace(/[Oo](?=\d)|(?<=\d)[Oo]/g, "0").match(/\b((?:19|20)\d{10})\b/);
@@ -56,7 +69,7 @@
     const mm = +n.slice(2, 4), dd = +n.slice(4, 6);
     return mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31;
   }
-
+ 
   function detect(text) {
     const t = text.toUpperCase();
     const ssm = /SURUHANJAYA|PENDAFTARAN PERNIAGAAN|BORANG [A-Z]|KAEDAH|PERAKUAN|EZBIZ|COMPANIES COMM/.test(t);
@@ -66,7 +79,7 @@
     if (ssm && pbt) return /PERAKUAN|BORANG/.test(t) ? "ssm" : "pbt";
     return null;
   }
-
+ 
   function parseSsm(text) {
     const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
     const out = {};
@@ -81,7 +94,7 @@
     const regIdx = lines.findIndex(l => /PENDAFTARAN\s*:|NO\.?\s*PENDAFTARAN|REGISTRATION NO/i.test(l));
     if (!out.nama && regIdx > 0) out.nama = clean(lines[regIdx - 1]);
     const regLine = regIdx >= 0 ? lines.slice(regIdx, regIdx + 2).join(" ") : text;
-    out.no_lama = oldSsm(regLine) || oldSsm(text);
+    out.no_lama = oldSsm(regLine) || bracketSsm(regLine) || oldSsm(text);
     out.no_baru = newSsm(regLine) || newSsm(text);
     // Tarikh tamat: "sehingga 9 OKTOBER 2027" / "hingga 31/12/2027"
     const flat = lines.join(" ");
@@ -94,7 +107,7 @@
     if (c) out.cawangan = c[1];
     return out;
   }
-
+ 
   // Ambil perkataan HURUF BESAR di awal sahaja; buang bunyi OCR di hujung
   function upperRun(v) {
     if (!v) return v;
@@ -106,7 +119,7 @@
     }
     return out.join(" ").replace(/[.,]+$/, "") || v;
   }
-
+ 
   const LABEL_CUT = /\s+(?:NO\s?\.?\s?(?:PETAK|BIL|FAIL|SIRI)|LOKASI|TARIKH|TEMPOH)\b.*$/i;
   function after(line, re) {
     const m = line.match(re);
@@ -115,7 +128,7 @@
     v = v.replace(LABEL_CUT, "");
     return clean(v);
   }
-
+ 
   function parsePbt(text) {
     const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
     const out = {};
@@ -140,7 +153,7 @@
           }
         }
       }
-      if (/^\W*NAMA\s*[:.]/i.test(l)) out.pemilik = upperRun(after(l, /NAMA/i));
+      if (/^\W*NAMA\s*[:.;©=]/i.test(l)) out.pemilik = upperRun(after(l, /NAMA/i));
       if (!out.alamat && /ALAMAT\s*(PERNIAGAAN|SYARIKAT|PREMIS)|MAT\s+PERNIAGAAN|LOKASI\s+LESEN\s*:\s*\w{3}/i.test(l)) {
         const parts = [after(l, /(PERNIAGAAN|SYARIKAT|PREMIS|LESEN)/i)].map(x => (x || "").replace(/,\s*\w{1,2}$/, ""));
         for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
@@ -151,8 +164,10 @@
         out.alamat = parts.filter(Boolean).join(", ").replace(/\s*,\s*,/g, ",");
       }
     }
+    if (out.alamat) out.alamat = out.alamat.split(", ").map(part => part.split(" ").filter(t => /^[A-Z0-9&.,\/()'-]+$/.test(t) && !/^[A-Z]$/.test(t)).join(" ")).filter(x => x.length >= 3).join(", ");
+    if (out.pemilik && out.nama_syarikat && out.nama_syarikat.startsWith(out.pemilik) && out.nama_syarikat.length > out.pemilik.length) out.pemilik = out.nama_syarikat;
     const ssmLine = lines.find(l => /\bS\s?SM\b|NO\.?\s?SSM|^\W*S?SM\b/i.test(l)) || "";
-    out.no_lama = oldSsm(ssmLine.toUpperCase());
+    out.no_lama = oldSsm(ssmLine.toUpperCase()) || bracketSsm(ssmLine);
     out.no_baru = newSsm(ssmLine);
     if (!out.kp) {
       const all = digits(flat).match(/\b\d{12}\b/g) || [];
@@ -169,8 +184,9 @@
     if (mj) out.majlis = clean(mj[0]).replace(/\s+(BANGUNAN|JALAN|NO)\b.*$/i, "");
     return out;
   }
-
+ 
   const api = { detect, parseSsm, parsePbt, dateFrom, oldSsm, newSsm };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Parse = api;
 })(typeof self !== "undefined" ? self : this);
+ 
