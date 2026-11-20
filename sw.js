@@ -1,5 +1,5 @@
 // Simpan semua fail apps dalam telefon supaya boleh dibuka tanpa internet.
-const VERSION = "v1.3";
+const VERSION = "v1.4";
 const CORE = [
   "./", "index.html", "app.js", "parse.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png",
