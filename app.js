@@ -1,5 +1,6 @@
 (() => {
 "use strict";
+const APP_VERSION = "1.3", APP_DATE = "20 November 2026";
 const $ = id => document.getElementById(id);
 const P_F = ["p_nama","p_pemilik","p_ssm","p_kp","p_tamat","p_tel","p_alamat","p_lesen","p_lesen_tamat","p_catatan"];
 const BULAN = ["Januari","Februari","Mac","April","Mei","Jun","Julai","Ogos","September","Oktober","November","Disember"];
@@ -58,7 +59,7 @@ function statusOf(p, ref) {
   if (p.p_tamat >= ref) return "AKTIF";
   return addMonths(p.p_tamat, 12) < ref ? "RENEW" : "EXPIRED";
 }
-const STATUS_TXT = { AKTIF: "AKTIF", EXPIRED: "EXPIRED", RENEW: "EXPIRED (MUST RENEW)", NONE: "TIADA TARIKH" };
+const STATUS_TXT = { AKTIF: "AKTIF", EXPIRED: "EXPIRED (BOLEH RENEW)", RENEW: "EXPIRED (DAFTAR BARU)", NONE: "TIADA TARIKH" };
 const namaCol = p => [p.p_nama, p.p_pemilik].filter(Boolean).join(" / ") || "(tiada nama)";
 const noCol = p => [p.p_ssm, p.p_kp].filter(Boolean).join(" / ") || "-";
 function busy(btn, on, label) { if (on) { btn._t = btn.textContent; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> ' + label; } else { btn.disabled = false; btn.textContent = btn._t; } }
@@ -153,7 +154,7 @@ function renderPremList() {
     b.onclick = () => openPrem(p);
     list.appendChild(b);
   });
-  $("in-sum").innerHTML = premises.length ? `<span class="pill AKTIF">${cnt.AKTIF} AKTIF</span><span class="pill EXPIRED">${cnt.EXPIRED} EXPIRED</span>${cnt.RENEW ? `<span class="pill RENEW">${cnt.RENEW} MUST RENEW</span>` : ""}${cnt.NONE ? `<span class="pill NONE">${cnt.NONE} TIADA TARIKH</span>` : ""}` : "";
+  $("in-sum").innerHTML = premises.length ? `<span class="pill AKTIF">${cnt.AKTIF} AKTIF</span><span class="pill EXPIRED">${cnt.EXPIRED} BOLEH RENEW</span>${cnt.RENEW ? `<span class="pill RENEW">${cnt.RENEW} DAFTAR BARU</span>` : ""}${cnt.NONE ? `<span class="pill NONE">${cnt.NONE} TIADA TARIKH</span>` : ""}` : "";
 }
 $("in-edit").onclick = () => openHead(current);
 $("in-del").onclick = () => $("in-del-c").hidden = false;
@@ -184,8 +185,8 @@ $("pr-back").onclick = () => go("insp");
 function renderBanner() {
   const t = $("p_tamat").value, st = statusOf({ p_tamat: t }, current?.tarikh);
   const msg = st === "AKTIF" ? `SSM AKTIF<small>Sah sehingga ${longDate(t)}</small>`
-    : st === "EXPIRED" ? `SSM EXPIRED<small>Tamat pada ${longDate(t)}</small>`
-    : st === "RENEW" ? `SSM EXPIRED (MUST RENEW)<small>Tamat lebih 12 bulan, pada ${longDate(t)}</small>`
+    : st === "EXPIRED" ? `SSM EXPIRED (BOLEH RENEW)<small>Tamat kurang 12 bulan, pada ${longDate(t)}</small>`
+    : st === "RENEW" ? `SSM EXPIRED (DAFTAR BARU)<small>Tamat lebih 12 bulan, pada ${longDate(t)}</small>`
     : `Status SSM belum diketahui<small>Snap sijil SSM atau isi tarikh tamat</small>`;
   let html = `<div class="banner ${st}">${msg}</div>`;
   const lt = $("p_lesen_tamat").value;
@@ -357,7 +358,7 @@ async function buildPdf() {
     didParseCell: d => { if (d.section === "body" && d.column.index === 4 && String(d.cell.raw).startsWith("EXPIRED")) { d.cell.styles.textColor = [179, 38, 30]; d.cell.styles.fontStyle = "bold"; } } });
   const n = doc.getNumberOfPages();
   for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(120);
-    doc.text(`${current.kawasan || ""} · ${longDate(current.tarikh)} · Muka ${i}/${n}`, 105, 290, { align: "center" }); }
+    doc.text(`${current.kawasan || ""} · ${longDate(current.tarikh)} · Muka ${i}/${n} · Rekod Pemeriksaan Premis v${APP_VERSION}`, 105, 290, { align: "center" }); }
   return doc.output("blob");
 }
 async function exportPdf(btn, share) {
@@ -406,6 +407,7 @@ if (!standalone && /iPhone|iPad/.test(navigator.userAgent)) { $("install").hidde
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
 
+$("app-version").textContent = APP_VERSION; $("app-date").textContent = APP_DATE;
 // Buang gambar lama yang pernah disimpan oleh versi terdahulu
 tx("gambar", "readwrite", s => s.clear()).catch(() => {});
 loadHome().then(() => go("home")).catch(e => { $("h-empty").textContent = "Storan telefon tidak dapat dibuka: " + e.message; });
