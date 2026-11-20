@@ -1,0 +1,5 @@
+tesseract.js 5.1.1 Apache-2.0
+tesseract.js-core 5.1.1 Apache-2.0
+jspdf 2.5.1 MIT
+jspdf-autotable 3.8.2 MIT
+xlsx 0.18.5 Apache-2.0

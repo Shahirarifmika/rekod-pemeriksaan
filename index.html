@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rekod Pemeriksaan Premis</title>
+<meta name="description" content="Snap sijil SSM dan lesen PBT, maklumat diisi automatik, jana laporan pemeriksaan.">
+<meta name="theme-color" content="#1d5e43">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pemeriksaan">
+<style>
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --ink:#18231d; --muted:#5c6b62; --line:#d6ddd7;
+  --accent:#1d5e43; --accent-ink:#ffffff; --accent-soft:#e1eee6;
+  --ok:#1f7a45; --ok-soft:#e2f3e8; --warn:#9a5b00; --warn-soft:#fbefd9; --bad:#b3261e; --bad-soft:#fbe4e1;
+  --f-display:"Archivo","Segoe UI",Roboto,system-ui,sans-serif; --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --f-mono:ui-monospace,"Roboto Mono",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111814; --surface:#18221c; --ink:#e4ece6; --muted:#9aaba0; --line:#2c3a32;
+  --accent:#5cbf8e; --accent-ink:#0c1a12; --accent-soft:#1d3528;
+  --ok:#6fd39a; --ok-soft:#173523; --warn:#f0b75a; --warn-soft:#3a2c12; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+img{max-width:100%}
+.wrap{max-width:720px;margin:0 auto}
+header{padding-block:18px 6px;display:flex;flex-direction:column;gap:4px}
+h1{font-family:var(--f-display);font-weight:800;font-size:1.45rem;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0;font-size:.9rem}
+.back{align-self:flex-start;border:0;background:none;color:var(--accent);font:600 .9rem var(--f-body);padding:4px 0;cursor:pointer}
+section.block{display:flex;flex-direction:column;gap:12px;margin-block:18px}
+h2{font-family:var(--f-display);font-weight:700;font-size:1.05rem;margin:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  font:600 .9rem var(--f-body);padding:10px 14px;border-radius:8px;cursor:pointer;min-height:44px;text-align:center;text-decoration:none}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.big{min-height:54px;font-size:1rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.back:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.card:focus-visible,.ln:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+label.file{position:relative;overflow:hidden}
+label.file input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.status{font-size:.88rem;color:var(--muted);min-height:1.2em}
+.status.err{color:var(--bad)}
+fieldset{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px 14px;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;min-width:0}
+legend{font-family:var(--f-display);font-weight:700;padding:0 6px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f.full{grid-column:1/-1}
+.f label,.lab{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.opt{text-transform:none;letter-spacing:0;font-weight:400}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 10px;width:100%;min-width:0}
+input.mono{font-family:var(--f-mono);font-size:15px}
+input.filled,textarea.filled{border-color:var(--accent);background:var(--accent-soft)}
+input.target,textarea.target{box-shadow:0 0 0 2px var(--accent)}
+textarea{min-height:64px;resize:vertical}
+@media (max-width:520px){fieldset{grid-template-columns:1fr}}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toolbar>.grow{flex:1;min-width:150px}
+.list{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.card .name{font-weight:600;overflow-wrap:anywhere}
+.meta{color:var(--muted);font-size:.84rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mono{font-family:var(--f-mono)}
+.bil{font:500 .8rem var(--f-mono);color:var(--muted);min-width:1.6em}
+.pill{font:700 .7rem var(--f-body);padding:3px 9px;border-radius:99px;white-space:nowrap;letter-spacing:.05em}
+.pill.AKTIF{background:var(--ok-soft);color:var(--ok)}
+.pill.EXPIRED,.pill.RENEW{background:var(--bad-soft);color:var(--bad)}
+.pill.RENEW{border:1px solid var(--bad)}
+.pill.NONE{background:var(--warn-soft);color:var(--warn)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:22px;color:var(--muted);text-align:center}
+.hdr{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem;margin:0}
+.hdr dt{color:var(--muted);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding-top:2px}
+.hdr dd{margin:0;overflow-wrap:anywhere}
+.summary{display:flex;gap:8px;flex-wrap:wrap}
+.confirm{background:var(--bad-soft);color:var(--bad);border-radius:8px;padding:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.9rem}
+.docs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.docs{grid-template-columns:1fr}}
+.doc{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.doc.has{border-style:solid;border-color:var(--accent)}
+.doc .lbl{font-weight:600}
+.doc .hint{color:var(--muted);font-size:.8rem}
+.doc .thumb{width:100%;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:var(--bg);border:1px solid var(--line)}
+.doc .row{display:flex;gap:6px;flex-wrap:wrap}
+.doc .row .btn{flex:1}
+.banner{display:flex;flex-direction:column;padding:12px 14px;border-radius:10px;font-weight:700}
+.banner.AKTIF{background:var(--ok-soft);color:var(--ok)}
+.banner.EXPIRED,.banner.RENEW{background:var(--bad-soft);color:var(--bad)}
+.banner.NONE{background:var(--warn-soft);color:var(--warn)}
+.banner small{font-weight:400;opacity:.9}
+.chip{padding:8px 12px;border-radius:8px;font-size:.88rem;background:var(--warn-soft);color:var(--warn)}
+.ocr{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ocr summary{cursor:pointer;font-weight:600;font-size:.9rem}
+.ocr .lines{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:260px;overflow:auto}
+.ln{border:1px solid var(--line);background:var(--bg);color:var(--ink);font:500 .82rem var(--f-mono);padding:6px 8px;border-radius:6px;cursor:pointer;text-align:left;max-width:100%;overflow-wrap:anywhere}
+.prog{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:5}
+.bar .in{max-width:720px;margin:0 auto;display:flex;gap:8px}
+.bar .btn{flex:1;padding-inline:8px}
+.pemb{display:flex;flex-direction:column;gap:6px}
+.pemb .r{display:flex;gap:6px}
+.pemb .r .btn{min-height:40px;padding:6px 12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;font-size:.9rem;z-index:9;max-width:calc(100% - 32px)}
+.note{font-size:.84rem;color:var(--muted);margin:0}
+.install{background:var(--accent-soft);border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.install p{margin:0;flex:1;min-width:180px;font-size:.9rem}
+.spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}.prog i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="v-home">
+  <header>
+    <h1>Rekod Pemeriksaan Premis</h1>
+    <p class="sub">Snap sijil SSM, maklumat diisi sendiri, status AKTIF atau EXPIRED dikira automatik.</p>
+  </header>
+  <div class="install" id="install" hidden>
+    <p id="install-txt">Pasang apps ini di skrin utama telefon untuk dibuka macam apps biasa.</p>
+    <button class="btn primary" id="install-btn" hidden>Pasang</button>
+  </div>
+  <section class="block">
+    <button class="btn primary big" id="h-new">Mula pemeriksaan baru</button>
+  </section>
+  <section class="block">
+    <h2>Pemeriksaan terdahulu</h2>
+    <div class="list" id="h-list"><div class="empty" id="h-empty">Belum ada pemeriksaan. Tekan <b>Mula pemeriksaan baru</b>, isi tarikh, pegawai dan kawasan, kemudian snap sijil setiap premis.</div></div>
+    <p class="note">Rekod disimpan dalam telefon ini sahaja. Muat turun Excel selepas setiap pemeriksaan sebagai salinan.</p>
+  </section>
+</div>
+
+<div id="v-head" hidden>
+  <header>
+    <button class="back" data-go="home">‹ Kembali</button>
+    <h1 id="hd-title">Pemeriksaan baru</h1>
+  </header>
+  <section class="block">
+    <fieldset>
+      <legend>Maklumat pemeriksaan</legend>
+      <div class="f"><label for="hd_tarikh">Tarikh pemeriksaan</label><input id="hd_tarikh" type="date"></div>
+      <div class="f"><label for="hd_pegawai">Pegawai pemeriksa</label><input id="hd_pegawai"></div>
+      <div class="f full"><span class="lab">Pembantu pemeriksa</span>
+        <div class="pemb" id="hd_pemb"></div>
+        <button class="btn ghost" id="hd_pemb_add" type="button">+ Tambah pembantu</button></div>
+      <div class="f full"><label for="hd_kawasan">Alamat kawasan</label><input id="hd_kawasan" placeholder="cth. Pasar Malam Taman Nusa Perintis, Gelang Patah"></div>
+    </fieldset>
+    <div class="status" id="hd-status"></div>
+  </section>
+</div>
+
+<div id="v-insp" hidden>
+  <header>
+    <button class="back" data-go="home">‹ Semua pemeriksaan</button>
+    <h1 id="in-title">Pemeriksaan</h1>
+  </header>
+  <section class="block">
+    <dl class="hdr" id="in-hdr"></dl>
+    <div class="toolbar"><button class="btn ghost" id="in-edit">Ubah maklumat</button>
+      <button class="btn ghost" id="in-share" hidden>Kongsi PDF</button>
+      <button class="btn ghost danger" id="in-del">Padam</button></div>
+    <div class="confirm" id="in-del-c" hidden>Padam pemeriksaan ini dan semua premisnya? Tidak boleh dibatalkan.
+      <button class="btn danger" id="in-del-yes">Ya, padam</button><button class="btn ghost" id="in-del-no">Batal</button></div>
+  </section>
+  <section class="block">
+    <h2>Premis <span id="in-count" class="meta"></span></h2>
+    <div class="summary" id="in-sum"></div>
+    <div class="list" id="in-list"><div class="empty" id="in-empty">Belum ada premis. Tekan <b>+ Premis</b> dan snap sijil SSM.</div></div>
+  </section>
+</div>
+
+<div id="v-prem" hidden>
+  <header>
+    <button class="back" id="pr-back">‹ Kembali ke senarai premis</button>
+    <h1 id="pr-title">Tambah premis</h1>
+  </header>
+  <section class="block">
+    <div class="docs">
+      <div class="doc" id="doc-ssm">
+        <span class="lbl">Sijil SSM</span>
+        <span class="hint">Dibaca sebaik gambar diambil</span>
+        <img class="thumb" id="thumb-ssm" alt="Gambar sijil SSM" hidden>
+        <div class="row">
+          <label class="btn primary file"><input type="file" id="in-ssm" accept="image/*" capture="environment">Snap</label>
+          <label class="btn file"><input type="file" id="in-ssm-g" accept="image/*">Galeri</label>
+        </div>
+      </div>
+      <div class="doc" id="doc-pbt">
+        <span class="lbl">Lesen PBT <span class="opt">(pilihan)</span></span>
+        <span class="hint">Untuk nama pemilik dan no. K/P</span>
+        <img class="thumb" id="thumb-pbt" alt="Gambar lesen PBT" hidden>
+        <div class="row">
+          <label class="btn file"><input type="file" id="in-pbt" accept="image/*" capture="environment">Snap</label>
+          <label class="btn file"><input type="file" id="in-pbt-g" accept="image/*">Galeri</label>
+        </div>
+      </div>
+    </div>
+    <div class="prog" id="pr-prog" hidden><i></i></div>
+    <div class="status" id="pr-read" aria-live="polite"></div>
+    <div id="pr-banner"></div>
+    <details class="ocr" id="pr-ocr" hidden>
+      <summary>Teks yang dibaca: tekan satu kotak di bawah, kemudian tekan baris untuk isi</summary>
+      <div class="lines" id="pr-lines"></div>
+    </details>
+  </section>
+  <section class="block">
+    <fieldset>
+      <legend>Maklumat premis</legend>
+      <div class="f full"><label for="p_nama">Nama perniagaan</label><input id="p_nama"></div>
+      <div class="f full"><label for="p_pemilik">Nama pemilik <span class="opt">(pilihan)</span></label><input id="p_pemilik"></div>
+      <div class="f"><label for="p_ssm">No. pendaftaran SSM</label><input id="p_ssm" class="mono" placeholder="cth. JM0968547-V" autocapitalize="characters"></div>
+      <div class="f"><label for="p_kp">No. K/P pemilik <span class="opt">(pilihan)</span></label><input id="p_kp" class="mono" inputmode="numeric"></div>
+      <div class="f"><label for="p_tamat">SSM sah sehingga</label><input id="p_tamat" type="date"></div>
+      <div class="f"><label for="p_tel">No. telefon <span class="opt">(pilihan)</span></label><input id="p_tel" type="tel" inputmode="tel" autocomplete="off"></div>
+      <div class="f full"><label for="p_alamat">Alamat perniagaan</label><textarea id="p_alamat"></textarea></div>
+      <div class="f"><label for="p_lesen">No. lesen PBT <span class="opt">(pilihan)</span></label><input id="p_lesen" class="mono"></div>
+      <div class="f"><label for="p_lesen_tamat">Lesen sah sehingga</label><input id="p_lesen_tamat" type="date"></div>
+      <div class="f full"><label for="p_catatan">Catatan <span class="opt">(pilihan)</span></label><textarea id="p_catatan"></textarea></div>
+    </fieldset>
+    <div class="status" id="pr-status" aria-live="polite"></div>
+    <div class="toolbar" id="pr-delrow" hidden><button class="btn ghost danger" id="pr-del">Padam premis ini</button></div>
+    <div class="confirm" id="pr-del-c" hidden>Padam premis ini? <button class="btn danger" id="pr-del-yes">Ya, padam</button><button class="btn ghost" id="pr-del-no">Batal</button></div>
+  </section>
+</div>
+</div>
+
+<div class="bar" id="bar" hidden><div class="in" id="bar-in"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="parse.js"></script>
+<script src="vendor/tesseract.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
