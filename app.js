@@ -1,8 +1,8 @@
 (() => {
 "use strict";
-const APP_VERSION = "1.3", APP_DATE = "20 November 2026";
+const APP_VERSION = "1.4", APP_DATE = "20 November 2026";
 const $ = id => document.getElementById(id);
-const P_F = ["p_nama","p_pemilik","p_ssm","p_kp","p_tamat","p_tel","p_alamat","p_lesen","p_lesen_tamat","p_catatan"];
+const P_F = ["p_nama","p_pemilik","p_ssm_baru","p_ssm","p_kp","p_tamat","p_tel","p_alamat","p_lesen","p_lesen_tamat","p_catatan"];
 const BULAN = ["Januari","Februari","Mac","April","Mei","Jun","Julai","Ogos","September","Oktober","November","Disember"];
 let inspections = [], current = null, premises = [];
 let editingPrem = null, photos = { ssm: null, pbt: null }, reading = 0, lastField = null;
@@ -61,7 +61,15 @@ function statusOf(p, ref) {
 }
 const STATUS_TXT = { AKTIF: "AKTIF", EXPIRED: "EXPIRED (BOLEH RENEW)", RENEW: "EXPIRED (DAFTAR BARU)", NONE: "TIADA TARIKH" };
 const namaCol = p => [p.p_nama, p.p_pemilik].filter(Boolean).join(" / ") || "(tiada nama)";
-const noCol = p => [p.p_ssm, p.p_kp].filter(Boolean).join(" / ") || "-";
+// No. SSM dibahagi kepada baru (12 digit) dan lama. Rekod lama yang simpan kedua-dua dalam satu kotak dipecahkan.
+function ssmParts(p) {
+  const raw = p.p_ssm || "";
+  const baru = p.p_ssm_baru || Parse.newSsm(raw) || "";
+  let lama = raw;
+  if (!p.p_ssm_baru && baru) lama = (Parse.oldSsm(raw.toUpperCase()) || raw.replace(baru, "").replace(/[()\s]/g, ""));
+  return { baru, lama };
+}
+const noCol = p => { const s = ssmParts(p); return [s.baru, s.lama, p.p_kp].filter(Boolean).join(" / ") || "-"; };
 function busy(btn, on, label) { if (on) { btn._t = btn.textContent; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> ' + label; } else { btn.disabled = false; btn.textContent = btn._t; } }
 
 // ---------------- navigation ----------------
@@ -206,7 +214,8 @@ $("pr-lines").addEventListener("click", e => {
   let v = b.textContent;
   const el = $(lastField);
   if (el.type === "date") { const d = Parse.dateFrom(v); if (!d) { toast("Tiada tarikh dalam baris ini"); return; } v = d; }
-  else if (lastField === "p_ssm") v = Parse.oldSsm(v.toUpperCase()) || Parse.newSsm(v) || v;
+  else if (lastField === "p_ssm") v = Parse.oldSsm(v.toUpperCase()) || v;
+  else if (lastField === "p_ssm_baru") v = Parse.newSsm(v) || v;
   else if (lastField === "p_kp") { const m = v.replace(/[\s-]/g, "").match(/\d{12}/); if (m) v = m[0]; }
   else if (el.tagName === "TEXTAREA" && el.value && lastField === "p_alamat") v = el.value + ", " + v;
   setField(lastField, v, true); renderBanner();
@@ -276,7 +285,7 @@ async function readPhoto(kind, canvas) {
     if (kind === "ssm") {
       const v = Parse.parseSsm(text);
       fillIfEmpty("p_nama", v.nama, true);
-      fillIfEmpty("p_ssm", v.no_lama || v.no_baru, true);
+      fillIfEmpty("p_ssm_baru", v.no_baru, true); fillIfEmpty("p_ssm", v.no_lama, true);
       fillIfEmpty("p_tamat", v.tamat, true);
       fillIfEmpty("p_alamat", v.alamat, true);
       if (!v.tamat) notes.push("Tarikh tamat tidak dijumpai.");
@@ -284,7 +293,7 @@ async function readPhoto(kind, canvas) {
     } else {
       const v = Parse.parsePbt(text);
       fillIfEmpty("p_pemilik", v.pemilik, true); fillIfEmpty("p_kp", v.kp, true);
-      fillIfEmpty("p_nama", v.nama_syarikat); fillIfEmpty("p_ssm", v.no_lama || v.no_baru);
+      fillIfEmpty("p_nama", v.nama_syarikat); fillIfEmpty("p_ssm_baru", v.no_baru); fillIfEmpty("p_ssm", v.no_lama);
       fillIfEmpty("p_lesen", v.no_lesen, true); fillIfEmpty("p_lesen_tamat", v.tamat, true); fillIfEmpty("p_alamat", v.alamat);
     }
     const filled = document.querySelectorAll("#v-prem .filled").length;
@@ -334,31 +343,31 @@ function loadScript(src) {
   return libs[src];
 }
 function fileBase() { return "Pemeriksaan_" + (current.kawasan || "kawasan").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 40) + "_" + (current.tarikh || today()); }
-function rows() { return premises.map((p, i) => { const st = statusOf(p, current.tarikh); return [i + 1, namaCol(p), noCol(p), p.p_tel || "", st === "NONE" ? "" : STATUS_TXT[st]]; }); }
+function rows() { return premises.map((p, i) => { const st = statusOf(p, current.tarikh); const s = ssmParts(p); return [i + 1, namaCol(p), s.baru, s.lama, p.p_kp || "", p.p_tel || "", st === "NONE" ? "" : STATUS_TXT[st]]; }); }
 function download(blob, name) {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
 }
 async function buildPdf() {
   await loadScript("vendor/jspdf.umd.min.js"); await loadScript("vendor/jspdf.plugin.autotable.min.js");
-  const doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4" });
+  const doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
   const M = 14; let y = 16;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.text("LAPORAN PEMERIKSAAN PREMIS", 105, y, { align: "center" }); y += 8;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.text("LAPORAN PEMERIKSAAN PREMIS", 148.5, y, { align: "center" }); y += 8;
   const hdr = [["TARIKH PEMERIKSAAN:", longDate(current.tarikh)], ["PEGAWAI PEMERIKSA:", current.pegawai || "-"]];
   (current.pembantu?.length ? current.pembantu : ["-"]).forEach((n, i) => hdr.push([i === 0 ? "PEMBANTU PEMERIKSA:" : "", n]));
   hdr.push(["ALAMAT KAWASAN:", current.kawasan || "-"]);
   doc.autoTable({ startY: y, body: hdr, theme: "grid", margin: { left: M, right: M }, styles: { fontSize: 9.5, cellPadding: 1.8, textColor: 20, lineColor: 150, lineWidth: .2 },
-    columnStyles: { 0: { cellWidth: 55, fillColor: [226, 228, 226] } } });
+    columnStyles: { 0: { cellWidth: 60, fillColor: [226, 228, 226] } } });
   y = doc.lastAutoTable.finalY + 6;
-  doc.autoTable({ startY: y, head: [["BIL", "NAMA PERNIAGAAN / NAMA PEMILIK", "NO. PENDAFTARAN PERNIAGAAN / NO KAD PENGENALAN PEMILIK", "NO. TELEFON", "STATUS PERNIAGAAN"]],
+  doc.autoTable({ startY: y, head: [["BIL", "NAMA PERNIAGAAN / NAMA PEMILIK", "NO. SSM BARU (12 DIGIT)", "NO. SSM LAMA", "NO. K/P PEMILIK", "NO. TELEFON", "STATUS PERNIAGAAN"]],
     body: rows(), theme: "grid", margin: { left: M, right: M },
     styles: { fontSize: 8.5, cellPadding: 1.6, textColor: 20, lineColor: 150, lineWidth: .2, valign: "middle" },
     headStyles: { fillColor: [226, 228, 226], textColor: 20, fontStyle: "bold", halign: "center" },
-    columnStyles: { 0: { cellWidth: 11, halign: "center" }, 1: { cellWidth: 58 }, 2: { cellWidth: 52, halign: "center" }, 3: { cellWidth: 26, halign: "center" }, 4: { halign: "center" } },
-    didParseCell: d => { if (d.section === "body" && d.column.index === 4 && String(d.cell.raw).startsWith("EXPIRED")) { d.cell.styles.textColor = [179, 38, 30]; d.cell.styles.fontStyle = "bold"; } } });
+    columnStyles: { 0: { cellWidth: 12, halign: "center" }, 1: { cellWidth: 72 }, 2: { cellWidth: 36, halign: "center" }, 3: { cellWidth: 32, halign: "center" }, 4: { cellWidth: 32, halign: "center" }, 5: { cellWidth: 28, halign: "center" }, 6: { halign: "center" } },
+    didParseCell: d => { if (d.section === "body" && d.column.index === 6 && String(d.cell.raw).startsWith("EXPIRED")) { d.cell.styles.textColor = [179, 38, 30]; d.cell.styles.fontStyle = "bold"; } } });
   const n = doc.getNumberOfPages();
   for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(120);
-    doc.text(`${current.kawasan || ""} · ${longDate(current.tarikh)} · Muka ${i}/${n} · Rekod Pemeriksaan Premis v${APP_VERSION}`, 105, 290, { align: "center" }); }
+    doc.text(`${current.kawasan || ""} · ${longDate(current.tarikh)} · Muka ${i}/${n} · Rekod Pemeriksaan Premis v${APP_VERSION}`, 148.5, 203, { align: "center" }); }
   return doc.output("blob");
 }
 async function exportPdf(btn, share) {
@@ -379,15 +388,15 @@ async function exportXlsx(btn) {
   try {
     await loadScript("vendor/xlsx.full.min.js");
     const aoa = [], merges = [];
-    const head = (label, val) => { const r = aoa.length; aoa.push([label, "", val, "", ""]); merges.push({ s: { r, c: 0 }, e: { r, c: 1 } }, { s: { r, c: 2 }, e: { r, c: 4 } }); };
+    const head = (label, val) => { const r = aoa.length; aoa.push([label, "", val, "", "", "", ""]); merges.push({ s: { r, c: 0 }, e: { r, c: 1 } }, { s: { r, c: 2 }, e: { r, c: 6 } }); };
     head("TARIKH PEMERIKSAAN:", longDate(current.tarikh)); aoa.push([]);
     head("PEGAWAI PEMERIKSA:", current.pegawai || ""); aoa.push([]);
     (current.pembantu?.length ? current.pembantu : [""]).forEach((n, i) => head(i === 0 ? "PEMBANTU PEMERIKSA:" : "", n)); aoa.push([]);
     head("ALAMAT KAWASAN:", current.kawasan || ""); aoa.push([]);
-    aoa.push(["BIL", "NAMA PERNIAGAAN / NAMA PEMILIK", "NO. PENDAFTARAN PERNIAGAAN/ NO KAD PENGENALAN PEMILIK", "NO. TELEFON", "STATUS PERNIAGAAN"]);
+    aoa.push(["BIL", "NAMA PERNIAGAAN / NAMA PEMILIK", "NO. SSM BARU (12 DIGIT)", "NO. SSM LAMA", "NO. K/P PEMILIK", "NO. TELEFON", "STATUS PERNIAGAAN"]);
     rows().forEach(r => aoa.push(r));
     const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!merges"] = merges;
-    ws["!cols"] = [{ wch: 6 }, { wch: 42 }, { wch: 40 }, { wch: 16 }, { wch: 22 }];
+    ws["!cols"] = [{ wch: 6 }, { wch: 42 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 24 }];
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Pemeriksaan");
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     download(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), fileBase() + ".xlsx");
